@@ -1,8 +1,8 @@
-# Example output
+# Example: a generated subagent file
 
-Below is an illustrative SDE subagent generated for a hypothetical Python repo with a `CLAUDE.md` and `.kiro/steering/`. It is shown so future runs of this skill have a concrete reference for shape, tone, and length.
-
-This file is documentation — not an agent. It will not be auto-loaded as a subagent.
+> **What you are looking at:** a fenced markdown block showing what `bootstrap-sde-agent` produces. The block below is what would be written to `<repo>/.claude/agents/<repo>-sde.md` — a **Claude Code subagent file**, governed by the [subagent spec](https://code.claude.com/docs/en/sub-agents). It is **not** a SKILL.md (which would be governed by [agentskills.io/specification](https://agentskills.io/specification)). The two file types use similar YAML frontmatter but support different fields and are loaded by different mechanisms — see [`../references/subagent-format.md`](../references/subagent-format.md) for the distinction.
+>
+> **This file (`example-agent.md`) itself is documentation.** It will not be auto-loaded by anything; the fenced block inside is for illustration only. Filenames in the example use the placeholder `examplerepo` — substitute your real repo name.
 
 ---
 

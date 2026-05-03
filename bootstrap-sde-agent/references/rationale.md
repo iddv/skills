@@ -10,7 +10,7 @@ The skill makes the risky choices defaults. The validator catches regressions.
 
 ## RED-phase baseline (verbatim)
 
-To establish the baseline, a fresh subagent was asked: *"create an SDE-style subagent definition at `<repo>/.claude/agents/parallax-sde.md` that represents an SDE on the parallax team."* No skill loaded. Real repo (`parallax`).
+To establish the baseline, a fresh subagent was asked: *"create an SDE-style subagent definition at `<repo>/.claude/agents/<repo>-sde.md` that represents an SDE on the team."* No skill loaded. Real Python project with a non-trivial `CLAUDE.md`, several `docs/` steering files, and an existing `.claude/worktrees/` convention.
 
 The output had a sophisticated body — well-tailored to the project, quoting CLAUDE.md verbatim — but the frontmatter and structural choices missed every load-bearing default. Verbatim from the agent's own explanation:
 
@@ -75,7 +75,7 @@ SDE work uses many tools, including ones not yet announced. Allowlists silently 
 
 ### Description opens with `Use when…`
 
-Anthropic's official guidance for auto-delegation. Claude routes on triggers, not job titles. A description starting with "SDE on the parallax team" is a trigger-degraded form — the description is a routing rule, not a label.
+Anthropic's official guidance for auto-delegation. Claude routes on triggers, not job titles. A description starting with "SDE on the X team" is a trigger-degraded form — the description is a routing rule, not a label.
 
 ### Body opens with "First moves" pointing at CLAUDE.md / `.kiro/steering/`
 
@@ -107,4 +107,4 @@ A 200-line shell script that errors on missing fields is the cheapest possible i
 - **No automatic regeneration cap.** Workflow step 5 says "regenerate; don't post-process-fix". If the model regenerates and fails repeatedly, intervention is manual. Bound: 2 regeneration attempts, then surface to user.
 - **Description must be a single-line plain scalar.** YAML block scalars (`description: |`) and folded scalars (`description: >`) are detected by the validator; if they appear in a generated agent, regenerate with the addendum "description must be a single-line plain scalar."
 - **Spec inspection asymmetry.** `.kiro/specs/*/spec.json` are read for *names only* in the inspection bundle. If active spec context is needed, name the spec in step 3's "any feedback" question and let the user inline what matters.
-- **Generalizability.** The skill assumes UTF-8 + LF line endings + a single-package layout. Monorepos work — generate one SDE per repo, not per service. Multi-checkout setups (e.g. `~/streamr` and `~/workspace/streamr`) work — the skill uses cwd's main repo, the orchestrator handles cross-location dispatch by absolute path.
+- **Generalizability.** The skill assumes UTF-8 + LF line endings + a single-package layout. Monorepos work — generate one SDE per repo, not per service. Multi-checkout setups (the same logical project cloned to two paths, or active worktrees alongside the main checkout) work — the skill uses the cwd's main repo per `git rev-parse --git-common-dir`; the orchestrator handles cross-location dispatch by absolute path.

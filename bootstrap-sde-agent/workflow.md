@@ -2,6 +2,8 @@
 
 Detailed procedure for generating a project-scoped SDE subagent. Read after `SKILL.md`.
 
+**Format reference for the artifact this skill produces:** [`references/subagent-format.md`](references/subagent-format.md) (skill-vs-subagent distinction, every frontmatter field). Authoritative spec: <https://code.claude.com/docs/en/sub-agents>.
+
 ## Step 1 — Verify environment
 
 ```bash
@@ -43,7 +45,7 @@ Read every file below that exists. **All inspection is read-only.** Don't summar
 | `.kiro/steering/*.md` | Curated project knowledge: product, tech, structure, custom roles. Load-bearing if present. |
 | `.kiro/specs/*/spec.json` | Active specifications. The agent should know what's in flight. List names only; don't load full spec bodies. |
 | `README.md`, `README.*` | Surface-level identity, quick-start, dev workflow. |
-| `DEVELOPMENT.md`, `DEV_PROMPT.md`, `CONTRIBUTING.md` | Often where the actual workflow lives if README is marketing-flavored. |
+| `DEVELOPMENT.md`, `CONTRIBUTING.md`, `HACKING.md` | Often where the actual dev workflow lives if README is marketing-flavored. Also consider any project-specific `*_PROMPT.md` or `*_GUIDE.md` files at the repo root. |
 | `package.json` / `pyproject.toml` / `go.mod` / `Cargo.toml` / `Gemfile` / `composer.json` | Tech stack, scripts, test/lint commands. |
 | `ls -F "$REPO_ROOT"` (top-level only) | Repo layout; informs the agent's mental model. |
 | `git log --oneline -20` | Recent activity vocabulary; surfaces in-flight work. |
@@ -188,9 +190,9 @@ End. Do not include a checklist for "next steps" — the user knows what to do n
 
 **Monorepo with multiple deployable services** (e.g. coordinator + node-client + frontend). Generate one SDE agent for the *whole repo*, not one per service. The body's "What you are working with" section enumerates the services. Anthropic explicitly warns: "Excessive specialist agents dilute automatic delegation reliability."
 
-**Project lives outside `~/workspace` or has multiple checkouts** (e.g. `~/streamr` and `~/workspace/streamr`). Use the cwd's repo root only. The orchestrator handles cross-location dispatch by absolute path.
+**Project has multiple checkouts at different locations.** Use the cwd's main repo root only (resolved via `git rev-parse --git-common-dir` per step 1). The orchestrator handles cross-location dispatch by absolute path.
 
-**Project has its own existing agent infrastructure** (`.claude/.worker-state.local.json`, custom prompts, ralph-loop, etc.). The generated SDE agent should *reference* that infrastructure (point at `DEVELOPMENT.md` or `DEV_PROMPT.md` in "First moves"), not replace it. The skill's job is to add an orchestrator-facing entry point, not to rewire the project's internal automation.
+**Project has its own existing agent infrastructure** (custom prompts at the repo root, worker-state files under `.claude/`, run-loop drivers, custom hooks, etc.). The generated SDE agent should *reference* that infrastructure (point at the relevant runbook in "First moves"), not replace it. The skill's job is to add an orchestrator-facing entry point, not to rewire the project's internal automation.
 
 **Project's CLAUDE.md uses `@file` includes** (e.g. `@docs/VISION.md`). Those resolve transitively when the agent is invoked — don't try to inline them. List the top-level CLAUDE.md in "First moves" and let the include chain do its job.
 
