@@ -7,7 +7,9 @@ description: Scaffolds and validates a Claude Code orchestrator subagent that co
 
 ## Overview
 
-Scaffolds and validates a Claude Code subagent intended to run as the **main session agent** (via `claude --agent <name>` or the `agent` setting in `.claude/settings.json`), coordinating a fleet of per-repo project agents that the user has previously bootstrapped. Use it once per workspace when you have two or more `<repo>-agent.md` files and want a single coordinator that can dispatch work across them.
+Scaffolds and validates a Claude Code subagent intended to run as the **main session agent** (via `claude --agent <name>` or the `agent` setting in `.claude/settings.json`), coordinating a fleet of per-repo project agents that the user has previously bootstrapped. Use it when you have two or more `<repo>-agent.md` files and want a coordinator that can dispatch work across them. Run it again to create *additional* orchestrators targeting different specialist subsets — e.g. one orchestrator for the frontend stack and another for the data pipeline.
+
+Because Claude Code's subagent discovery walks **up** from CWD only, the skill also creates user-scope symlinks (`~/.claude/agents/<specialist>.md` → per-repo file) so the orchestrator can resolve specialists from any working directory. Symlinking is the default; opt out per-run if you have a different setup.
 
 **Output is a [Claude Code subagent](https://code.claude.com/docs/en/sub-agents) intended for main-session use, not delegated use.** The orchestrator coordinates; the project agents do the per-repo work. For the project agent template this skill composes with, see [`bootstrap-project-agent`](../bootstrap-project-agent/). For a worked example of orchestrator output, see [`references/orchestrator-example.md`](references/orchestrator-example.md).
 
@@ -48,23 +50,52 @@ Build a registry of `{ frontmatter_name, repo_path, description }` tuples. Where
 
 If zero project agents are found: refuse and tell the user to run `bootstrap-project-agent` on each target repo first. The orchestrator without specialists is a coordinator with no team.
 
-2. **Ask once** — (a) where to write the orchestrator (`~/.claude/agents/<name>.md` user-scope or `<dir>/.claude/agents/<name>.md` workspace-scope; default user-scope), (b) what to call it (default `orchestrator`), (c) any discovered project agents to *exclude* (default: include all), (d) model override (default `opus`).
+2. **Select which specialists this orchestrator should include.** Show the discovered registry to the user as a numbered list (each entry: agent name + repo path + first ~80 chars of description). Ask: *"Which of these should this orchestrator coordinate? (default: all; or comma-separated indices, e.g. `1,3,4`)"*.
 
-3. **Generate** — feed the registry + answers into the meta-prompt below.
+   Why this is a separate step: the user may want **multiple orchestrators** on one machine, each targeting a different specialist subset (e.g. one orchestrator for the frontend stack, one for the data pipeline). Defaulting to "all" makes the simple case one keystroke; subset selection makes the customized case explicit.
 
-4. **Validate** — `scripts/validate-orchestrator.sh <path>`; fix until clean.
+3. **Ask once** — (a) where to write the orchestrator (`~/.claude/agents/<name>.md` user-scope or `<dir>/.claude/agents/<name>.md` workspace-scope; default user-scope), (b) what to call it (default `orchestrator` for a single orchestrator; for multiples, suggest a scoped name like `frontend-orchestrator`), (c) model override (default `opus`), (d) make selected specialists discoverable from any CWD via user-scope symlinks (default: yes — see step 7).
 
-5. **Write** — `mkdir -p` the destination directory and write the file. Don't commit.
+4. **Generate** — feed the *selected* subset of the registry + answers into the meta-prompt below. The orchestrator's `Agent(...)` allowlist contains only the selected specialists' frontmatter names.
 
-6. **Tell the operator how to invoke it:**
+5. **Validate** — `scripts/validate-orchestrator.sh <path>`; fix until clean.
+
+6. **Write the orchestrator file** — `mkdir -p` the destination directory and write. Don't commit.
+
+7. **Make specialists discoverable from any CWD** (if user accepted in step 3d). Claude Code's subagent discovery walks **up** from CWD, never **down** into sibling repos — so a per-repo project agent at `<repo>/.claude/agents/<repo>-agent.md` is invisible to an orchestrator session running from anywhere outside that repo. To bridge the gap without moving the canonical files, create a user-scope symlink for each selected specialist:
 
 ```bash
-claude --agent <name>          # one-off session as the orchestrator
-# or persist by adding to .claude/settings.json:
-#   { "agent": "<name>" }      # makes every `claude` in this dir use the orchestrator
+for agent in "${selected_agents[@]}"; do
+  src="<repo_path>/.claude/agents/<frontmatter_name>.md"   # canonical, per-repo
+  dst="$HOME/.claude/agents/<frontmatter_name>.md"          # user-scope visibility
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    : # already correct, skip silently
+  elif [ -e "$dst" ]; then
+    echo "WARN: $dst already exists (and points elsewhere or is a real file). Refusing to overwrite. Resolve manually."
+  else
+    ln -s "$src" "$dst"
+  fi
+done
 ```
 
-## Meta-prompt (feed registry + four answers)
+The skill must NOT silently overwrite an existing file or symlink with a different target — surface the conflict and let the user decide. Multiple orchestrators sharing the same specialist (e.g. `alpha-agent` is in two orchestrators' selections) reuse the same symlink, which is correct: the symlink keys on the agent name, not on which orchestrator references it.
+
+8. **Tell the operator how to invoke and clean up:**
+
+```bash
+# Launch:
+claude --agent <name>          # one-off session as the orchestrator
+# or persist for the current dir by adding to .claude/settings.json:
+#   { "agent": "<name>" }
+
+# To remove the symlinks created in step 7 (if uninstalling this orchestrator):
+find "$HOME/.claude/agents" -type l -lname '*/.claude/agents/*-agent.md' -delete
+# (or just `rm` the specific ones you no longer want)
+```
+
+Surface a one-line summary of what was created: the orchestrator file path, the selected specialists, and the symlinks (if any).
+
+## Meta-prompt (feed selected-subset registry + answers)
 
 ```
 You are emitting ONE Claude Code subagent file: an ORCHESTRATOR for a fleet of per-repo project agents.
@@ -73,7 +104,7 @@ Authoritative field semantics: https://code.claude.com/docs/en/sub-agents — do
 Main-session-agent context: https://code.claude.com/docs/en/sub-agents#run-an-agent-as-the-main-session
 
 INPUTS:
-- registry: list of {agent_name, repo_path, description} for each discovered project agent
+- registry: list of {agent_name, repo_path, description} for the SELECTED subset of project agents (not all discovered ones — only the ones the user chose to include in this orchestrator)
 - name: orchestrator name (lowercase, hyphens)
 - model: inherit | opus | sonnet | haiku (default opus)
 
@@ -137,3 +168,6 @@ Constraints: body 1500–15000 chars; no absolute paths leaking the operator's h
 | Re-dispatching when a specialist refuses out-of-scope work | The refusal is load-bearing. Surface to the operator with the cited reason |
 | Inventing a new specialist not in the registry | Refuse. Tell the operator to run `bootstrap-project-agent` on the new repo first |
 | Inferring agent names from filenames or repo names | Parse the `name:` field from each agent's frontmatter. `Agent(...)` resolves against the frontmatter name; mismatches silently fail to dispatch |
+| Defaulting to "include every discovered specialist" without asking | Ask explicitly. The user may want multiple orchestrators targeting different subsets (frontend stack vs data pipeline). Defaulting to all is fine; *not asking* is the bug |
+| Silently overwriting an existing symlink at `~/.claude/agents/<name>.md` that points elsewhere | Refuse and surface the conflict. The user may have a different orchestrator pointing the same name at a different repo — clobbering breaks their other setup |
+| Generating an orchestrator without creating the symlinks | `Agent(<specialist-name>)` will silently fail to resolve at dispatch time because Claude Code's discovery walks UP from CWD, not DOWN into sibling repos. Either symlink (default), document the user-scope-only path, or refuse to ship |
