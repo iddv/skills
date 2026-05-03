@@ -5,8 +5,21 @@ Detailed procedure for generating a project-scoped SDE subagent. Read after `SKI
 ## Step 1 — Verify environment
 
 ```bash
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
-[ -z "$REPO_ROOT" ] && echo "Not a git repo. Refusing." && exit 1
+# Detect a git repo at all
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+  echo "Not a git repo. Refusing."; exit 1
+}
+
+# Find the *main* repo root, even when invoked from inside a worktree.
+# git-common-dir returns <main-repo>/.git when inside a worktree, or .git when at main.
+COMMON_DIR="$(git rev-parse --git-common-dir)"
+if [ "$COMMON_DIR" = ".git" ] || [ "$COMMON_DIR" = "$(git rev-parse --git-dir)" ]; then
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+else
+  # Inside a linked worktree: git-common-dir points at <main>/.git
+  REPO_ROOT="$(cd "$COMMON_DIR/.." && pwd)"
+  echo "Note: invoked from inside a worktree. Writing to main checkout: $REPO_ROOT"
+fi
 
 REPO_NAME="$(basename "$REPO_ROOT")"
 AGENT_PATH="$REPO_ROOT/.claude/agents/${REPO_NAME}-sde.md"
@@ -17,7 +30,7 @@ if [ -f "$AGENT_PATH" ]; then
 fi
 ```
 
-Refuse politely if cwd is not a git repo. The agent body needs *something* to specialize on. Refuse if an SDE agent already exists at that path; offer to overwrite only if the user explicitly asks.
+Refuse politely if cwd is not a git repo. The agent body needs *something* to specialize on. **Always derive `REPO_ROOT` from `git rev-parse --git-common-dir`, never from `--show-toplevel` alone** — `--show-toplevel` returns the worktree path when invoked from inside one, and the agent would land in `<worktree>/.claude/agents/<worktree-basename>-sde.md` instead of the main checkout. Refuse if an SDE agent already exists at that path; offer to overwrite only if the user explicitly asks.
 
 ## Step 2 — Inspect the repo
 
@@ -66,13 +79,13 @@ INPUT: A bundle of files from the target repo (CLAUDE.md, AGENTS.md, .kiro/steer
 OUTPUT: A markdown subagent file with YAML frontmatter and a body, ready to write to .claude/agents/<repo>-sde.md.
 
 REQUIRED FRONTMATTER (do not negotiate these):
-- name: <repo>-sde   (where <repo> is the repo's directory basename, lowercased, hyphens-only)
-- description: starts with "Use this agent when" — flat prose on a single block, naming 2-4 trigger scenarios using the project's actual vocabulary (proper nouns, service names, domain terms surfaced in the bundle). Include a final sentence describing what NOT to invoke this agent for. End with: 'See "When invoked" in the agent body for worked scenarios.'
+- name: <repo>-sde   (where <repo> is the main repo's directory basename, lowercased, hyphens-only)
+- description: a SINGLE-LINE PLAIN SCALAR (no `|`, no `>`, no quoted multiline). Starts with "Use when" — flat prose, 50-1024 chars, naming 2-4 trigger scenarios using the project's actual vocabulary (proper nouns, service names, domain terms surfaced in the bundle). Include a sentence describing what NOT to invoke this agent for. End with: 'See "When invoked" in the agent body for worked scenarios.'
 - model: inherit  (or whatever the user overrode to)
 - isolation: worktree
 - memory: project
 
-DO NOT add `tools` (omit so the agent inherits all). DO NOT add `color`. DO NOT add `permissionMode`.
+DO NOT add `tools` (omit so the agent inherits all). DO NOT add `color`. DO NOT add `permissionMode`. DO NOT add `metadata` or `license`.
 
 BODY STRUCTURE (use these exact headings; fill content from the inspection bundle):
 
@@ -132,13 +145,17 @@ CONSTRAINTS:
 After generation, programmatically verify (don't trust the model):
 
 - Frontmatter contains `isolation: worktree` and `memory: project` exactly as written.
-- Description starts with `Use this agent when` (case-insensitive match on first non-whitespace token).
+- Description is a single-line plain scalar (no `|`, no `>`).
+- Description starts with `Use when` or `Use proactively` (case-insensitive on the first non-whitespace token).
+- Description ends with: `See "When invoked" in the agent body for worked scenarios.`
+- Description includes at least one sentence describing what NOT to invoke this agent for (heuristic: contains the token `Do not` or `Don't` or `not for`).
+- Frontmatter does NOT contain `tools`, `color`, `permissionMode`, `metadata`, or `license`.
 - Body contains `## When invoked` and `## Return format to the orchestrator` (or close variant — `## Return format` matches).
 - Body length 500–10,000 chars.
-- No absolute paths matching `/home/`, `/Users/`, `/root/`, `C:\`.
-- If repo's CLAUDE.md contains the substring "no emojis" or "no co-author", grep the body for emojis/`Co-Authored-By` and fail if found.
+- No absolute paths matching `/home/`, `/Users/`, `/root/`, or any `[A-Za-z]:\` Windows path.
+- If repo's CLAUDE.md contains the substring "no emojis" or "no co-author", grep the body for emojis / `Co-Authored-By` and fail if found.
 
-If any check fails: regenerate with a corrective addendum to the prompt, **don't** post-process-fix in code. Post-process fixing produces files that look right but didn't go through the model's reasoning.
+If any check fails: regenerate with a corrective addendum to the prompt, **don't** post-process-fix in code. Post-process fixing produces files that look right but didn't go through the model's reasoning. **Cap regeneration at 2 attempts.** On the third failure, surface the specific check failures to the user and let them decide.
 
 ## Step 6 — Validate
 

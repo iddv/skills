@@ -9,7 +9,7 @@ This file is documentation — not an agent. It will not be auto-loaded as a sub
 ```markdown
 ---
 name: examplerepo-sde
-description: Use this agent when work touches the examplerepo repository — changes to src/examplerepo/ (the runner, library, or adapter modules), config/sources.yaml, scripts/, tst/, or docs/. Triggers include the user mentioning "the runner", "an adapter", "the library", "PRIORITIES", or asking about the daily snapshot publish. Also use proactively when the orchestrator coordinates cross-repo work whose downstream consumer reads examplerepo's snapshot artifact. Do not invoke for repositories that sit alongside examplerepo in the same workspace. See "When invoked" in the agent body for worked scenarios.
+description: Use when work touches the examplerepo repository — changes to src/examplerepo/ (the runner, library, or adapter modules), config/sources.yaml, scripts/, tst/, or docs/. Triggers include the user mentioning "the runner", "an adapter", "the library", "PRIORITIES", or asking about the daily snapshot publish. Use proactively when the orchestrator coordinates cross-repo work whose downstream consumer reads examplerepo's snapshot artifact. Do not invoke for repositories that sit alongside examplerepo in the same workspace. See "When invoked" in the agent body for worked scenarios.
 model: inherit
 isolation: worktree
 memory: project
