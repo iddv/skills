@@ -12,14 +12,14 @@ Or install a specific skill by directory name from a clone:
 
 ```bash
 git clone https://github.com/iddv/skills.git
-cp -r skills/bootstrap-sde-agent ~/.claude/skills/
+cp -r skills/bootstrap-project-agent ~/.claude/skills/
 ```
 
 ## Skills
 
 | Skill | Purpose |
 |-------|---------|
-| [bootstrap-sde-agent](bootstrap-sde-agent/) | Inspect a repo's existing context (CLAUDE.md, AGENTS.md, .kiro/, README, manifest) and generate a project-scoped SDE-style Claude Code subagent at `.claude/agents/<repo>-sde.md`. Defaults to `isolation: worktree` and `memory: project`. |
+| [bootstrap-project-agent](bootstrap-project-agent/) | Inspect a repo's existing context (CLAUDE.md, AGENTS.md, .kiro/, README, manifest) and generate a project-scoped Claude Code subagent at `.claude/agents/<repo>-project.md`. Defaults to `isolation: worktree` and `memory: project`. |
 
 ## Conventions
 

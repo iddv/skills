@@ -1,21 +1,21 @@
 # Example: a generated subagent file
 
-> **What you are looking at:** a fenced markdown block showing what `bootstrap-sde-agent` produces. The block below is what would be written to `<repo>/.claude/agents/<repo>-sde.md` — a **Claude Code subagent file**, governed by the [subagent spec](https://code.claude.com/docs/en/sub-agents). It is **not** a SKILL.md (which would be governed by [agentskills.io/specification](https://agentskills.io/specification)). The two file types use similar YAML frontmatter but support different fields and are loaded by different mechanisms.
+> **What you are looking at:** a fenced markdown block showing what `bootstrap-project-agent` produces. The block below is what would be written to `<repo>/.claude/agents/<repo>-project.md` — a **Claude Code subagent file**, governed by the [subagent spec](https://code.claude.com/docs/en/sub-agents). It is **not** a SKILL.md (which would be governed by [agentskills.io/specification](https://agentskills.io/specification)). The two file types use similar YAML frontmatter but support different fields and are loaded by different mechanisms.
 >
-> **This file (`example-agent.md`) itself is documentation.** It will not be auto-loaded by anything; the fenced block inside is for illustration only. Filenames in the example use the placeholder `examplerepo` — substitute your real repo name.
+> **This file (`agent-example.md`) itself is documentation.** It will not be auto-loaded by anything; the fenced block inside is for illustration only. Filenames in the example use the placeholder `examplerepo` — substitute your real repo name.
 
 ---
 
 ```markdown
 ---
-name: examplerepo-sde
+name: examplerepo-project
 description: Use when work touches the examplerepo repository — changes to src/examplerepo/ (the runner, library, or adapter modules), config/sources.yaml, scripts/, tst/, or docs/. Triggers include the user mentioning "the runner", "an adapter", "the library", "PRIORITIES", or asking about the daily snapshot publish. Use proactively when the orchestrator coordinates cross-repo work whose downstream consumer reads examplerepo's snapshot artifact. Do not invoke for repositories that sit alongside examplerepo in the same workspace. See "When invoked" in the agent body for worked scenarios.
 model: inherit
 isolation: worktree
 memory: project
 ---
 
-# examplerepo SDE
+# examplerepo project agent
 
 examplerepo is a Python service that watches several configured sources, builds an append-only library of observations, and publishes a daily snapshot bundle for downstream consumers. The library is the product; the runner is the means.
 
@@ -87,7 +87,7 @@ Your final report must include:
 
 ## Why this example reads the way it does
 
-- **Frontmatter is minimal but enforces the SDE defaults**: `isolation: worktree` and `memory: project` are present without commentary. Tools are inherited (no `tools:` field). Model is `inherit`.
+- **Frontmatter is minimal but enforces the project agent defaults**: `isolation: worktree` and `memory: project` are present without commentary. Tools are inherited (no `tools:` field). Model is `inherit`.
 - **Description leads with `Use when`**, names concrete paths and project vocabulary as triggers, includes a negative trigger (don't invoke for adjacent repos), and ends with the pointer to "When invoked" in the body.
 - **Body opens with self-briefing about isolation from the parent's conversation** — a single paragraph that prevents "continue what we were doing" from sneaking in.
 - **"First moves" defers to the project's own steering documents** rather than duplicating them. CLAUDE.md is named first because it is the working manual.

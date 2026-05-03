@@ -1,24 +1,24 @@
 ---
-name: bootstrap-sde-agent
-description: Scaffolds and validates a project-scoped Claude Code SDE subagent at `<repo>/.claude/agents/<repo>-sde.md` from a repo's existing steering. Use when creating an SDE for this repo, onboarding a new repo into a multi-repo orchestrator, scaffolding a per-team subagent, generating a project-aware agent that knows this codebase, or bootstrapping the agent surface for an existing project. Do not use for task-only agents (code-reviewer, test-writer, etc.) or empty repos that have no CLAUDE.md, AGENTS.md, .kiro/steering/, or README — add steering first.
+name: bootstrap-project-agent
+description: Scaffolds and validates a project-scoped Claude Code subagent at `<repo>/.claude/agents/<repo>-project.md` from a repo's existing steering. Use when creating a project agent for this repo, onboarding a new repo into a multi-repo orchestrator, scaffolding a per-team subagent, generating an agent that knows this codebase, or bootstrapping the agent surface for an existing project. Do not use for task-only agents (code-reviewer, test-writer, etc.) or empty repos that have no CLAUDE.md, AGENTS.md, .kiro/steering/, or README — add steering first.
 ---
 
-# bootstrap-sde-agent
+# bootstrap-project-agent
 
 ## Overview
 
-Scaffolds and validates a Claude Code SDE-style subagent for one repo at `<repo>/.claude/agents/<repo>-sde.md`, with the SDE template baked in (`isolation: worktree`, `memory: project`, deferral to the repo's own CLAUDE.md). Use it once per repo when onboarding a project into a multi-repo orchestrator setup, or any time you would otherwise hand-write a per-repo specialist subagent.
+Scaffolds and validates a project-scoped Claude Code subagent for one repo at `<repo>/.claude/agents/<repo>-project.md`, with the project agent template baked in (`isolation: worktree`, `memory: project`, deferral to the repo's own CLAUDE.md). Use it once per repo when onboarding a project into a multi-repo orchestrator setup, or any time you would otherwise hand-write a per-repo specialist subagent.
 
-**Output is a [Claude Code subagent](https://code.claude.com/docs/en/sub-agents), not a Skill** ([different spec](https://agentskills.io/specification)). For field meanings, routing, memory paths, and edge cases, read the official subagent doc — this skill only pins the **SDE template** and the **procedure**. For a worked example of a passing output, see [`examples/example-agent.md`](examples/example-agent.md).
+**Output is a [Claude Code subagent](https://code.claude.com/docs/en/sub-agents), not a Skill** ([different spec](https://agentskills.io/specification)). For field meanings, routing, memory paths, and edge cases, read the official subagent doc — this skill only pins the **project agent template** and the **procedure**. For a worked example of a passing output, see [`references/agent-example.md`](references/agent-example.md).
 
 **Background:** default `isolation: worktree` — if unclear, read `superpowers:using-git-worktrees` and [Worktrees](https://code.claude.com/docs/en/worktrees). [Agent teams](https://code.claude.com/docs/en/agent-teams) are a different feature.
 
-## SDE template (defaults not spelled out in one place upstream)
+## Project agent template (defaults not spelled out in one place upstream)
 
 | Item | Value |
 |------|--------|
-| Path | `<repo>/.claude/agents/<basename>-sde.md` |
-| `name` | `<basename>-sde` (lowercase, hyphens) |
+| Path | `<repo>/.claude/agents/<basename>-project.md` |
+| `name` | `<basename>-project` (lowercase, hyphens) |
 | `model` | `inherit` unless user overrides |
 | `isolation` | `worktree` |
 | `memory` | `project` |
@@ -41,7 +41,7 @@ else
 fi
 ```
 
-Refuse if `.claude/agents/<basename>-sde.md` already exists unless `--force`. Refuse if there is no steering (`CLAUDE.md` / `AGENTS.md` / README / `.kiro/` all absent).
+Refuse if `.claude/agents/<basename>-project.md` already exists unless `--force`. Refuse if there is no steering (`CLAUDE.md` / `AGENTS.md` / README / `.kiro/` all absent).
 
 2. **Inspect (read-only)** — gather text for generation: `CLAUDE.md` (and nested up to depth 3 if your rules say so), `AGENTS.md`, `.kiro/steering/*.md`, `.kiro/specs/*/spec.json` (names only), README + any `CONTRIBUTING`/`DEVELOPMENT`/`HACKING`, one top-level manifest (`package.json` / `pyproject.toml` / `go.mod` / `Cargo.toml` / …), `ls` of repo root, recent `git log --oneline -20`, `.claude/settings*.json` if present. Extract proper nouns for the `description` triggers.
 
@@ -56,16 +56,16 @@ Refuse if `.claude/agents/<basename>-sde.md` already exists unless `--force`. Re
 ## Meta-prompt (feed inspection bundle + three answers)
 
 ```
-You are emitting ONE Claude Code subagent file for repo <basename>, path .claude/agents/<basename>-sde.md.
+You are emitting ONE Claude Code subagent file for repo <basename>, path .claude/agents/<basename>-project.md.
 
 Authoritative field semantics: https://code.claude.com/docs/en/sub-agents — do not invent fields.
 
-Frontmatter (required): name <basename>-sde; model inherit OR user override; isolation worktree; memory project.
+Frontmatter (required): name <basename>-project; model inherit OR user override; isolation worktree; memory project.
 Omit: tools, color, permissionMode, metadata, license.
 description: single-line plain scalar; 50–1024 chars; start Use when or Use proactively; project vocabulary; one "do not invoke for…"; end exactly: See "When invoked" in the agent body for worked scenarios.
 
 Body — use these headings in order:
-# <Title> SDE
+# <Title> project agent
 (two short paragraphs: repo purpose from README/CLAUDE; orchestrator isolation — no parent chat, prompt is full SOW.)
 
 ## First moves, every invocation
@@ -93,7 +93,7 @@ Constraints: body 500–10000 chars; repo-relative paths only; no invented rules
 
 | Wrong move | Right move |
 |------------|------------|
-| `isolation` "is orchestration only" | It is official frontmatter; SDE uses `worktree`. |
+| `isolation` "is orchestration only" | It is official frontmatter; project agents use `worktree`. |
 | Inline full CLAUDE.md in body | Defer to files; avoids drift. |
-| One SDE per package in a monorepo | One per repo; see [blog](https://claude.com/blog/subagents-in-claude-code) on too many specialists. |
+| One project agent per package in a monorepo | One per repo; see [blog](https://claude.com/blog/subagents-in-claude-code) on too many specialists. |
 | Paraphrase CLAUDE rules | Quote verbatim. |
