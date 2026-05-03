@@ -1,93 +1,99 @@
 ---
 name: bootstrap-sde-agent
-description: Use when bootstrapping or scaffolding a project-scoped SDE-style Claude Code subagent for a repository, or onboarding a new repo into a multi-repo orchestrator. Triggers include phrases like "create an agent for this repo", "set up a project SDE", "make an agent that knows this codebase", "bootstrap a team agent". Use proactively when starting work in a git repository that has steering context (CLAUDE.md, AGENTS.md, .kiro/) but no .claude/agents/ directory yet.
+description: Scaffolds and validates a project-scoped Claude Code SDE subagent at `<repo>/.claude/agents/<repo>-sde.md` from a repo's existing steering. Use when creating an SDE for this repo, onboarding a new repo into a multi-repo orchestrator, scaffolding a per-team subagent, generating a project-aware agent that knows this codebase, or bootstrapping the agent surface for an existing project. Do not use for task-only agents (code-reviewer, test-writer, etc.) or empty repos that have no CLAUDE.md, AGENTS.md, .kiro/steering/, or README — add steering first.
 ---
 
 # bootstrap-sde-agent
 
-**REQUIRED BACKGROUND:** Generated agents default to `isolation: worktree`. If you don't know what that means, read `superpowers:using-git-worktrees` first.
-
-**Announce at start:** "I'm using the bootstrap-sde-agent skill to scaffold a project SDE for `<repo>`."
-
-## What this generates
-
-A **Claude Code subagent file** at `<repo>/.claude/agents/<repo>-sde.md`. This is NOT a SKILL.md — both file types use YAML frontmatter, but they are governed by different specifications, live in different directories, and behave differently. See [`references/subagent-format.md`](references/subagent-format.md) for the field-by-field reference, and [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents) for the authoritative spec.
-
 ## Overview
 
-The generated agent is a **thin operational layer over the repo's own steering documents (CLAUDE.md, AGENTS.md, `.kiro/steering/`)**, not a parallel system that drifts from them. It encodes the project's vocabulary, conventions, and non-negotiable rules so an orchestrator can delegate work into the repo without re-briefing each time.
+Scaffolds and validates a Claude Code SDE-style subagent for one repo at `<repo>/.claude/agents/<repo>-sde.md`, with the SDE template baked in (`isolation: worktree`, `memory: project`, deferral to the repo's own CLAUDE.md). Use it once per repo when onboarding a project into a multi-repo orchestrator setup, or any time you would otherwise hand-write a per-repo specialist subagent.
 
-## When to use
+**Output is a [Claude Code subagent](https://code.claude.com/docs/en/sub-agents), not a Skill** ([different spec](https://agentskills.io/specification)). For field meanings, routing, memory paths, and edge cases, read the official subagent doc — this skill only pins the **SDE template** and the **procedure**. For a worked example of a passing output, see [`examples/example-agent.md`](examples/example-agent.md).
 
-- Onboarding a new repo into a multi-repo orchestrator setup
-- The user explicitly asks to create / scaffold / bootstrap a project SDE agent
-- A repo has rich CLAUDE.md / `.kiro/` context but no `.claude/agents/` yet
+**Background:** default `isolation: worktree` — if unclear, read `superpowers:using-git-worktrees` and [Worktrees](https://code.claude.com/docs/en/worktrees). [Agent teams](https://code.claude.com/docs/en/agent-teams) are a different feature.
 
-**Do NOT use when:**
-- The user wants a task-specific agent (code-reviewer, test-writer) — different template
-- The repo has no CLAUDE.md, AGENTS.md, README, or other steering — refuse and ask the user to write one first; the agent body would be hollow
+## SDE template (defaults not spelled out in one place upstream)
 
-## Quick reference: defaults the skill enforces
+| Item | Value |
+|------|--------|
+| Path | `<repo>/.claude/agents/<basename>-sde.md` |
+| `name` | `<basename>-sde` (lowercase, hyphens) |
+| `model` | `inherit` unless user overrides |
+| `isolation` | `worktree` |
+| `memory` | `project` |
+| Omit from frontmatter | `tools`, `color`, `permissionMode`, `metadata`, `license` (inherit tools; tune permissions in [settings](https://code.claude.com/en/settings); optional UI fields are template noise) |
+| `description` | Single-line plain YAML. Opens with `Use when` or `Use proactively`. Includes negative trigger + ends with `See "When invoked" in the agent body for worked scenarios.` — see [automatic delegation](https://code.claude.com/docs/en/sub-agents#understand-automatic-delegation) |
 
-| Field | Default | Why |
-|-------|---------|-----|
-| `name` | `<reponame>-sde` | Stable, project-scoped, easy to @-mention |
-| `description` opener | `Use when…` | Anthropic's auto-delegation trigger pattern |
-| `model` | `inherit` | Orchestrator picks tier per task |
-| `tools` | omitted | SDE work uses many tools; allowlists go stale; restrict via settings.json |
-| `isolation` | `worktree` | User requirement; closes the most common rationalization gap |
-| `memory` | `project` | Lets agent accumulate repo-specific learnings; survives clone |
-| `color` / `permissionMode` | omitted | Not in agentskills.io spec |
-| Body opens with | "First moves" pointing at CLAUDE.md / `.kiro/steering/` | Defer; do not duplicate |
-| Body includes | `## When invoked` (prose-bullet scenarios) | Anchors auto-delegation |
-| Body ends with | `## Return format to the orchestrator` | Structured handoff |
+Run `scripts/validate-agent.sh` on the draft; **pass = zero warnings** before shipping.
 
-## Workflow
+## Procedure
 
-See [workflow.md](workflow.md) for the step-by-step procedure and the meta-prompt. Summary:
+1. **Resolve `<repo>`** — must be a git checkout. Prefer main checkout when inside a linked worktree (do **not** rely on `--show-toplevel` alone):
 
-1. Verify cwd is a git repo root (handle worktrees correctly via `git rev-parse --git-common-dir`)
-2. Inspect: CLAUDE.md, AGENTS.md, `.kiro/steering/*.md`, README*, manifest, top-level structure
-3. Confirm 3 short questions with user (scope, feedback, model override)
-4. Generate via the meta-prompt
-5. Validate via `scripts/validate-agent.sh`
-6. Write to `<repo>/.claude/agents/<repo>-sde.md`
-7. `cat` the file back; explain decisions
+```bash
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "Not a git repo"; exit 1; }
+COMMON_DIR="$(git rev-parse --git-common-dir)"
+if [ "$COMMON_DIR" = ".git" ] || [ "$COMMON_DIR" = "$(git rev-parse --git-dir)" ]; then
+  REPO_ROOT="$(git rev-parse --show-toplevel)"
+else
+  REPO_ROOT="$(cd "$COMMON_DIR/.." && pwd)"
+fi
+```
 
-## Red flags — stop and reconsider
+Refuse if `.claude/agents/<basename>-sde.md` already exists unless `--force`. Refuse if there is no steering (`CLAUDE.md` / `AGENTS.md` / README / `.kiro/` all absent).
 
-These rationalizations come from the RED-phase baseline (an unaided agent asked to write an SDE agent for a real Python project). All produce subtly wrong agents. Treat them as automatic stops.
+2. **Inspect (read-only)** — gather text for generation: `CLAUDE.md` (and nested up to depth 3 if your rules say so), `AGENTS.md`, `.kiro/steering/*.md`, `.kiro/specs/*/spec.json` (names only), README + any `CONTRIBUTING`/`DEVELOPMENT`/`HACKING`, one top-level manifest (`package.json` / `pyproject.toml` / `go.mod` / `Cargo.toml` / …), `ls` of repo root, recent `git log --oneline -20`, `.claude/settings*.json` if present. Extract proper nouns for the `description` triggers.
 
-| Rationalization | Reality |
-|-----------------|---------|
-| "Subagent definitions don't configure worktrees — that's an orchestrator concern." | `isolation` is a documented frontmatter field. Setting it makes worktree isolation the default for every invocation, which is what the user wants. |
-| "I'll inline CLAUDE.md so the agent always has it." | The agent re-reads CLAUDE.md every invocation. Inlining causes drift the moment CLAUDE.md is edited. Defer; don't duplicate. |
-| "Description should describe the agent's role and expertise." | Description is a routing rule, not a job title. Open with `Use when…` and list trigger keywords. |
-| "I'll tighten `tools` for least-privilege." | SDE work uses many tools, including ones not yet announced. Allowlists silently break on new tool releases. Inherit; restrict via `settings.json`. |
-| "I'll add memory later if needed." | `memory: project` is cheap, survives `git clone`, and lets the agent accumulate codebase learnings. Default it on. |
-| "The agent can figure out it's a subagent from context." | It can't — it doesn't see the parent's conversation. State explicitly: "You are invoked by an orchestrator in a different session. The prompt is the full statement of work." |
-| "Skip the Return section — the agent will report naturally." | The orchestrator only sees the return value. Without a structured Return section, every invocation produces a different shape. |
+3. **Ask once** — (a) paths not to touch, (b) free-text prefs, (c) model override (`inherit` default). If no answer, use defaults.
 
-## Common mistakes
+4. **Generate** — use the meta-prompt below + official doc for anything not listed.
 
-| Mistake | Fix |
-|---------|-----|
-| Hard-coded absolute paths in the body | Use repo-relative paths; the agent runs wherever the orchestrator clones |
-| Generating one SDE per service in a monorepo | One SDE per repo. Anthropic warns specialist sprawl dilutes auto-delegation |
-| Skipping `.kiro/specs/` inspection because "specs aren't operational" | Active specs tell the agent what's in flight. List names; don't load full bodies |
-| Paraphrasing CLAUDE.md rules into the agent body | Quote verbatim. Paraphrase weakens; verbatim survives drift |
+5. **Validate** — `scripts/validate-agent.sh <path>`; fix until clean.
 
-## Validation
+6. **Write** — `mkdir -p "$REPO_ROOT/.claude/agents"` then write the file; do not commit for the user.
 
-`scripts/validate-agent.sh <path>` enforces every default in the Quick reference table. Generated agents must pass with zero warnings. See [`references/rationale.md`](references/rationale.md) for *why* each check exists.
+## Meta-prompt (feed inspection bundle + three answers)
 
-## References
+```
+You are emitting ONE Claude Code subagent file for repo <basename>, path .claude/agents/<basename>-sde.md.
 
-- [`references/subagent-format.md`](references/subagent-format.md) — field-by-field reference for the agent file format this skill produces, plus the skill-vs-subagent distinction
-- [`references/rationale.md`](references/rationale.md) — why each enforced default exists; RED-phase baseline narrative
-- [`workflow.md`](workflow.md) — full step-by-step procedure with the meta-prompt
-- [`examples/example-agent.md`](examples/example-agent.md) — illustrative output, with framing
-- **Official:** Claude Code subagent spec — <https://code.claude.com/docs/en/sub-agents>
-- **Official:** Agent Skills spec (governs *this* file) — <https://agentskills.io/specification>
-- **Official:** Worktrees (relevant because we default to `isolation: worktree`) — <https://code.claude.com/docs/en/worktrees>
-- Anthropic's blog on subagents — <https://claude.com/blog/subagents-in-claude-code>
+Authoritative field semantics: https://code.claude.com/docs/en/sub-agents — do not invent fields.
+
+Frontmatter (required): name <basename>-sde; model inherit OR user override; isolation worktree; memory project.
+Omit: tools, color, permissionMode, metadata, license.
+description: single-line plain scalar; 50–1024 chars; start Use when or Use proactively; project vocabulary; one "do not invoke for…"; end exactly: See "When invoked" in the agent body for worked scenarios.
+
+Body — use these headings in order:
+# <Title> SDE
+(two short paragraphs: repo purpose from README/CLAUDE; orchestrator isolation — no parent chat, prompt is full SOW.)
+
+## First moves, every invocation
+(numbered repo-relative paths: CLAUDE.md, AGENTS.md, .kiro/steering if any, etc.)
+
+## What you are working with
+(layout, commands from manifest; if .kiro/specs exists list active spec names only)
+
+## How work happens here
+(quote CLAUDE.md rules verbatim — no paraphrase; omit if silent on a topic)
+
+## When invoked
+(2–4 bold-led scenario bullets for routing)
+
+## Engineering conventions
+(stack, tests, lint; optional "Do not modify" from user exclusions)
+
+## Return format to the orchestrator
+(numbered: what changed/verified; handoffs; one-way doors; match repo output discipline)
+
+Constraints: body 500–10000 chars; repo-relative paths only; no invented rules; if CLAUDE forbids emojis/co-author, obey in body. Regenerate at most twice if validation fails; then stop and report failures.
+```
+
+## Pitfalls (keep short)
+
+| Wrong move | Right move |
+|------------|------------|
+| `isolation` "is orchestration only" | It is official frontmatter; SDE uses `worktree`. |
+| Inline full CLAUDE.md in body | Defer to files; avoids drift. |
+| One SDE per package in a monorepo | One per repo; see [blog](https://claude.com/blog/subagents-in-claude-code) on too many specialists. |
+| Paraphrase CLAUDE rules | Quote verbatim. |

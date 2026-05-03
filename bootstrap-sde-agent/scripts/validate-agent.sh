@@ -149,7 +149,7 @@ else
     errors=$((errors+1))
   fi
   if [ ${#name} -lt 1 ] || [ ${#name} -gt 64 ]; then
-    echo "ERROR: name must be 1-64 characters (agentskills.io spec)"
+    echo "ERROR: name must be 1-64 characters (SDE template limit)"
     errors=$((errors+1))
   fi
   case "$name" in
@@ -171,7 +171,7 @@ else
     errors=$((errors+1))
   fi
   if [ "$desc_len" -gt 1024 ]; then
-    echo "ERROR: description exceeds agentskills.io max of 1024 characters"
+    echo "ERROR: description exceeds 1024 characters (SDE template limit)"
     errors=$((errors+1))
   fi
   case "$description" in
