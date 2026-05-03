@@ -1,6 +1,6 @@
 # Example: a generated subagent file
 
-> **What you are looking at:** a fenced markdown block showing what `bootstrap-project-agent` produces. The block below is what would be written to `<repo>/.claude/agents/<repo>-project.md` — a **Claude Code subagent file**, governed by the [subagent spec](https://code.claude.com/docs/en/sub-agents). It is **not** a SKILL.md (which would be governed by [agentskills.io/specification](https://agentskills.io/specification)). The two file types use similar YAML frontmatter but support different fields and are loaded by different mechanisms.
+> **What you are looking at:** a fenced markdown block showing what `bootstrap-project-agent` produces. The block below is what would be written to `<repo>/.claude/agents/<repo>-agent.md` — a **Claude Code subagent file**, governed by the [subagent spec](https://code.claude.com/docs/en/sub-agents). It is **not** a SKILL.md (which would be governed by [agentskills.io/specification](https://agentskills.io/specification)). The two file types use similar YAML frontmatter but support different fields and are loaded by different mechanisms.
 >
 > **This file (`agent-example.md`) itself is documentation.** It will not be auto-loaded by anything; the fenced block inside is for illustration only. Filenames in the example use the placeholder `examplerepo` — substitute your real repo name.
 
@@ -8,7 +8,7 @@
 
 ```markdown
 ---
-name: examplerepo-project
+name: examplerepo-agent
 description: Use when work touches the examplerepo repository — changes to src/examplerepo/ (the runner, library, or adapter modules), config/sources.yaml, scripts/, tst/, or docs/. Triggers include the user mentioning "the runner", "an adapter", "the library", "PRIORITIES", or asking about the daily snapshot publish. Use proactively when the orchestrator coordinates cross-repo work whose downstream consumer reads examplerepo's snapshot artifact. Do not invoke for repositories that sit alongside examplerepo in the same workspace. See "When invoked" in the agent body for worked scenarios.
 model: inherit
 isolation: worktree

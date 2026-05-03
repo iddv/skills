@@ -19,7 +19,7 @@ cp -r skills/bootstrap-project-agent ~/.claude/skills/
 
 | Skill | Purpose |
 |-------|---------|
-| [bootstrap-project-agent](bootstrap-project-agent/) | Inspect a repo's existing context (CLAUDE.md, AGENTS.md, .kiro/, README, manifest) and generate a project-scoped Claude Code subagent at `.claude/agents/<repo>-project.md`. Defaults to `isolation: worktree` and `memory: project`. |
+| [bootstrap-project-agent](bootstrap-project-agent/) | Inspect a repo's existing context (CLAUDE.md, AGENTS.md, .kiro/, README, manifest) and generate a project-scoped Claude Code subagent at `.claude/agents/<repo>-agent.md`. Defaults to `isolation: worktree` and `memory: project`. |
 
 ## Conventions
 

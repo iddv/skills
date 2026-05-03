@@ -153,8 +153,8 @@ else
     errors=$((errors+1))
   fi
   case "$name" in
-    *-project) ;;
-    *) echo "WARN  name should end in '-project' for the project agent convention"; warnings=$((warnings+1)) ;;
+    *-agent) ;;
+    *) echo "WARN  name should end in '-agent' for the project agent convention"; warnings=$((warnings+1)) ;;
   esac
 fi
 
