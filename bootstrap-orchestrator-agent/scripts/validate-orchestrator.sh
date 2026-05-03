@@ -193,7 +193,7 @@ else
   if printf '%s\n' "$tools" | grep -qE 'Agent\([^)]*[a-z][^)]*\)'; then
     echo "OK    tools includes Agent(<named-specialists>)"
     # Cross-check: at least one allowlist name (or its project-name root) should appear in the description.
-    # Descriptions read in human terms ("parallax", "streamr"), not file-suffixed ones ("parallax-agent"),
+    # Descriptions read in human terms ("alpha", "beta"), not file-suffixed ones ("alpha-agent"),
     # so we strip common agent suffixes before substring-matching.
     if [ -n "$description" ]; then
       allowlist_names="$(printf '%s\n' "$tools" | grep -oE 'Agent\([^)]+\)' | head -1 | sed -E 's/^Agent\(//; s/\)$//; s/[[:space:]]*,[[:space:]]*/\n/g' | grep -v '^$' || true)"

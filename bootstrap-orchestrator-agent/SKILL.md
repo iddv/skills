@@ -36,10 +36,10 @@ Run `scripts/validate-orchestrator.sh` on the draft; **pass = zero warnings** be
 1. **Discover existing project agents.** Walk likely locations to find candidate files:
 
 ```bash
-# Project agents in workspace-style layout (~/workspace/*/.claude/agents/*-agent.md)
-find ~/workspace -mindepth 4 -maxdepth 4 -type f -path '*/.claude/agents/*-agent.md' 2>/dev/null
-# Plus any explicit non-workspace repo (e.g. ~/streamr)
-find ~ -maxdepth 4 -type f -path '*/.claude/agents/*-agent.md' -not -path '*/workspace/*' 2>/dev/null
+# Project agents in a workspace-style layout (e.g. ~/projects/*/.claude/agents/*-agent.md)
+find "$WORKSPACE_DIR" -mindepth 4 -maxdepth 4 -type f -path '*/.claude/agents/*-agent.md' 2>/dev/null
+# Plus any explicit non-workspace repos the user names
+find "$HOME" -maxdepth 4 -type f -path '*/.claude/agents/*-agent.md' 2>/dev/null
 ```
 
 For each match, **parse the YAML frontmatter and extract the `name:` field.** That value — not the filename, not the directory name, not the repo name — is what `Agent(...)` will resolve against when the orchestrator dispatches. Common gotcha: a file at `<repo>/.claude/agents/<repo>-agent.md` may declare `name: <something-different>` inside its frontmatter (e.g. legacy agents from prior conventions). The frontmatter `name:` is the authoritative identifier; mismatches mean the orchestrator's `Agent(<inferred-name>)` will silently resolve to nothing.
